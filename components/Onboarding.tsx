@@ -5,6 +5,7 @@ import {
   AppState,
   buildRecurring,
   DEFAULT_ANSWERS,
+  fmtPts,
   minutesFromRecurring,
   ScheduleAnswers,
   scoreMinutes,
@@ -62,7 +63,7 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
       id,
       name: id,
       color: "#000",
-      pointsPerHour: points[id] ?? 1,
+      pointsPerBlock: points[id] ?? 1,
     }));
     return {
       weekday: scoreMinutes(wd, cats as never),
@@ -74,16 +75,16 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
   const finish = () => {
     const recurring = buildRecurring(answers);
     const cats = [
-      { id: "sleep", name: "Sleep", color: "#6366f1", pointsPerHour: points.sleep },
-      { id: "family", name: "Family", color: "#f59e0b", pointsPerHour: points.family },
-      { id: "learning", name: "Learning", color: "#10b981", pointsPerHour: points.learning },
-      { id: "exercise", name: "Exercise", color: "#ef4444", pointsPerHour: points.exercise },
-      { id: "focus", name: "Deep Focus", color: "#8b5cf6", pointsPerHour: points.focus },
-      { id: "work", name: "Work", color: "#3b82f6", pointsPerHour: points.work },
-      { id: "chores", name: "Chores", color: "#84cc16", pointsPerHour: points.chores },
-      { id: "commute", name: "Commute", color: "#06b6d4", pointsPerHour: points.commute },
-      { id: "free", name: "Free Time", color: "#9ca3af", pointsPerHour: 1 },
-      { id: "social", name: "Social Media", color: "#ec4899", pointsPerHour: points.social },
+      { id: "sleep", name: "Sleep", color: "#6366f1", pointsPerBlock: points.sleep },
+      { id: "family", name: "Family", color: "#f59e0b", pointsPerBlock: points.family },
+      { id: "learning", name: "Learning", color: "#10b981", pointsPerBlock: points.learning },
+      { id: "exercise", name: "Exercise", color: "#ef4444", pointsPerBlock: points.exercise },
+      { id: "focus", name: "Deep Focus", color: "#8b5cf6", pointsPerBlock: points.focus },
+      { id: "work", name: "Work", color: "#3b82f6", pointsPerBlock: points.work },
+      { id: "chores", name: "Chores", color: "#84cc16", pointsPerBlock: points.chores },
+      { id: "commute", name: "Commute", color: "#06b6d4", pointsPerBlock: points.commute },
+      { id: "free", name: "Free Time", color: "#9ca3af", pointsPerBlock: 1 },
+      { id: "social", name: "Social Media", color: "#ec4899", pointsPerBlock: points.social },
     ];
     const state: AppState = {
       onboarded: true,
@@ -157,7 +158,7 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
               Everyone gets a limited number of high-value slots — that&apos;s what makes the
-              trade-offs real. Pick your budget, then assign points per hour to each category.
+              trade-offs real. Pick your budget, then assign points per 10-minute block to each category.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm font-medium text-slate-700">
@@ -168,7 +169,7 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
                   className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
                 >
                   {[2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>{n} categories at 3 pts/hr</option>
+                    <option key={n} value={n}>{n} categories at 3 pts/block</option>
                   ))}
                 </select>
               </label>
@@ -180,7 +181,7 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
                   className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
                 >
                   {[0, 1, 2, 3].map((n) => (
-                    <option key={n} value={n}>{n} categor{n === 1 ? "y" : "ies"} at 2 pts/hr</option>
+                    <option key={n} value={n}>{n} categor{n === 1 ? "y" : "ies"} at 2 pts/block</option>
                   ))}
                 </select>
               </label>
@@ -195,7 +196,7 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
                     className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
                   >
                     {[3, 2, 1, 0, -0.5, -1].map((v) => (
-                      <option key={v} value={v}>{v > 0 ? `${v} pts/hr` : v === 0 ? "0 pts/hr" : `${v} pts/hr (costs you)`}</option>
+                      <option key={v} value={v}>{v > 0 ? `${v} pts/block` : v === 0 ? "0 pts/block" : `${v} pts/block (costs you)`}</option>
                     ))}
                   </select>
                 </div>
@@ -299,17 +300,17 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
             </p>
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="rounded-xl bg-indigo-50 p-4">
-                <div className="text-2xl font-extrabold text-indigo-700">{preview.weekday.toFixed(1)}</div>
+                <div className="text-2xl font-extrabold text-indigo-700">{fmtPts(preview.weekday)}</div>
                 <div className="text-xs text-slate-600">points on a weekday</div>
               </div>
               <div className="rounded-xl bg-emerald-50 p-4">
-                <div className="text-2xl font-extrabold text-emerald-700">{preview.weekend.toFixed(1)}</div>
+                <div className="text-2xl font-extrabold text-emerald-700">{fmtPts(preview.weekend)}</div>
                 <div className="text-xs text-slate-600">points on a weekend day</div>
               </div>
             </div>
             <p className="text-sm text-slate-500">
-              Example: 8 hours of sleep at 3 pts/hr = 24 points. A 45-minute workout at 3 pts/hr
-              = 2.3 points, or 4.5 blocks of your 144.
+              Example: 8 hours of sleep at 3 pts per block = 144 points. A 45-minute workout at
+              3 pts per block = 13.5 points, or 4.5 blocks of your 144.
             </p>
             <p className="text-sm text-slate-500">
               Days auto-score from this schedule. If you don&apos;t confirm a day in the evening,

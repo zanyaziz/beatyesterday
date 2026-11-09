@@ -1,5 +1,6 @@
 // Beat Yesterday — core data model + points engine.
-// Day = 144 blocks of 10 minutes. points = pointsPerHour * minutes / 60.
+// Day = 144 blocks of 10 minutes. points = pointsPerBlock * minutes / 10
+// (a category's value is the points earned per 10-minute block).
 // v1 persistence is localStorage; see supabase/schema.sql for the
 // production data model this maps to 1:1.
 
@@ -7,7 +8,7 @@ export type Category = {
   id: string;
   name: string;
   color: string;
-  pointsPerHour: number;
+  pointsPerBlock: number; // points per 10-minute block
 };
 
 export type RecBlock = {
@@ -61,16 +62,16 @@ export interface AppState {
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: "sleep", name: "Sleep", color: "#6366f1", pointsPerHour: 3 },
-  { id: "family", name: "Family", color: "#f59e0b", pointsPerHour: 3 },
-  { id: "learning", name: "Learning", color: "#10b981", pointsPerHour: 3 },
-  { id: "exercise", name: "Exercise", color: "#ef4444", pointsPerHour: 3 },
-  { id: "focus", name: "Deep Focus", color: "#8b5cf6", pointsPerHour: 2 },
-  { id: "work", name: "Work", color: "#3b82f6", pointsPerHour: 1 },
-  { id: "chores", name: "Chores", color: "#84cc16", pointsPerHour: 1 },
-  { id: "commute", name: "Commute", color: "#06b6d4", pointsPerHour: 1 },
-  { id: "free", name: "Free Time", color: "#9ca3af", pointsPerHour: 1 },
-  { id: "social", name: "Social Media", color: "#ec4899", pointsPerHour: -0.5 },
+  { id: "sleep", name: "Sleep", color: "#6366f1", pointsPerBlock: 3 },
+  { id: "family", name: "Family", color: "#f59e0b", pointsPerBlock: 3 },
+  { id: "learning", name: "Learning", color: "#10b981", pointsPerBlock: 3 },
+  { id: "exercise", name: "Exercise", color: "#ef4444", pointsPerBlock: 3 },
+  { id: "focus", name: "Deep Focus", color: "#8b5cf6", pointsPerBlock: 2 },
+  { id: "work", name: "Work", color: "#3b82f6", pointsPerBlock: 1 },
+  { id: "chores", name: "Chores", color: "#84cc16", pointsPerBlock: 1 },
+  { id: "commute", name: "Commute", color: "#06b6d4", pointsPerBlock: 1 },
+  { id: "free", name: "Free Time", color: "#9ca3af", pointsPerBlock: 1 },
+  { id: "social", name: "Social Media", color: "#ec4899", pointsPerBlock: -0.5 },
 ];
 
 export const DEFAULT_ANSWERS: ScheduleAnswers = {
@@ -106,6 +107,10 @@ export function fmtDur(min: number): string {
   const h = Math.floor(min / 60);
   const m = Math.round(min % 60);
   return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+export function fmtPts(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
 export function blocksOf(min: number): number {
@@ -220,7 +225,7 @@ export function scoreMinutes(minutes: Record<string, number>, cats: Category[]):
   let total = 0;
   for (const [id, m] of Object.entries(minutes)) {
     const c = map[id];
-    if (c) total += (c.pointsPerHour * m) / 60;
+    if (c) total += (c.pointsPerBlock * m) / 10;
   }
   return total;
 }
@@ -359,10 +364,10 @@ export type DemoMember = {
 };
 
 export const DEMO_MEMBERS: DemoMember[] = [
-  { id: "riley", name: "Riley", sharing: "totals", color: "#f59e0b", base: 3.5, swing: 4 },
-  { id: "jordan", name: "Jordan", sharing: "detailed", color: "#10b981", base: -2, swing: 5 },
-  { id: "taylor", name: "Taylor", sharing: "private", color: "#8b5cf6", base: 1, swing: 3 },
-  { id: "casey", name: "Casey", sharing: "detailed", color: "#06b6d4", base: -5, swing: 6 },
+  { id: "riley", name: "Riley", sharing: "totals", color: "#f59e0b", base: 21, swing: 24 },
+  { id: "jordan", name: "Jordan", sharing: "detailed", color: "#10b981", base: -12, swing: 30 },
+  { id: "taylor", name: "Taylor", sharing: "private", color: "#8b5cf6", base: 6, swing: 18 },
+  { id: "casey", name: "Casey", sharing: "detailed", color: "#06b6d4", base: -30, swing: 36 },
 ];
 
 export function demoPoints(m: DemoMember, state: AppState, date: string): number {

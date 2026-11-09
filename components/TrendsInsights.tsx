@@ -11,6 +11,7 @@ import {
   dayPoints,
   dayStatus,
   fmtDur,
+  fmtPts,
   lastNDates,
   prettyDate,
 } from "../lib/core";
@@ -79,16 +80,16 @@ export function TrendsTab({ state }: { state: AppState }) {
 
       <div className="grid grid-cols-3 gap-3 text-center">
         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-          <div className="text-2xl font-extrabold text-slate-900">{total.toFixed(0)}</div>
+          <div className="text-2xl font-extrabold text-slate-900">{fmtPts(total)}</div>
           <div className="text-xs text-slate-500">points in range</div>
         </div>
         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-          <div className="text-2xl font-extrabold text-slate-900">{avg.toFixed(1)}</div>
+          <div className="text-2xl font-extrabold text-slate-900">{fmtPts(avg)}</div>
           <div className="text-xs text-slate-500">avg points / day</div>
         </div>
         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
           <div className={`text-2xl font-extrabold ${last7 - prior7 >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-            {last7 - prior7 >= 0 ? "+" : ""}{(last7 - prior7).toFixed(0)}
+            {last7 - prior7 >= 0 ? "+" : ""}{fmtPts(last7 - prior7)}
           </div>
           <div className="text-xs text-slate-500">pts this week vs last</div>
         </div>
@@ -98,7 +99,7 @@ export function TrendsTab({ state }: { state: AppState }) {
         <h3 className="mb-3 font-semibold text-slate-900">Daily points</h3>
         <div className="flex items-end gap-1" style={{ height: 140 }}>
           {dates.map((d, i) => (
-            <div key={d} className="group relative flex-1" title={`${prettyDate(d)}: ${points[i].toFixed(1)} pts (${dayStatus(state, d)})`}>
+            <div key={d} className="group relative flex-1" title={`${prettyDate(d)}: ${fmtPts(points[i])} pts (${dayStatus(state, d)})`}>
               <div
                 className={`w-full rounded-t ${dayStatus(state, d) === "assumed" ? "bg-indigo-300" : "bg-indigo-600"}`}
                 style={{ height: `${Math.max(4, (points[i] / max) * 130)}px` }}
@@ -125,16 +126,16 @@ export function TrendsTab({ state }: { state: AppState }) {
                 <span className="w-10 shrink-0 text-xs font-medium text-slate-600">{prettyDate(d).split(",")[0]}</span>
                 <div className="flex h-4 flex-1 overflow-hidden rounded">
                   {state.categories
-                    .filter((c) => (mins[c.id] || 0) > 0 && c.pointsPerHour > 0)
+                    .filter((c) => (mins[c.id] || 0) > 0 && c.pointsPerBlock > 0)
                     .map((c) => (
                       <div
                         key={c.id}
                         title={`${c.name}: ${fmtDur(mins[c.id])}`}
-                        style={{ width: `${(((c.pointsPerHour * (mins[c.id] || 0)) / 60) / totalPts) * 100}%`, backgroundColor: c.color }}
+                        style={{ width: `${(((c.pointsPerBlock * (mins[c.id] || 0)) / 10) / totalPts) * 100}%`, backgroundColor: c.color }}
                       />
                     ))}
                 </div>
-                <span className="w-12 shrink-0 text-right text-xs font-semibold text-slate-700">{dayPoints(state, d).toFixed(1)}</span>
+                <span className="w-12 shrink-0 text-right text-xs font-semibold text-slate-700">{fmtPts(dayPoints(state, d))}</span>
               </div>
             );
           })}
@@ -188,13 +189,13 @@ export function InsightsTab({
 
   const suggestions: string[] = [];
   if (avg("social", dates7) > 30)
-    suggestions.push(`Social media is averaging ${fmtDur(avg("social", dates7))}/day. Cutting 30 min/day to a 3-pointer earns about +1.5 pts/day.`);
+    suggestions.push(`Social media is averaging ${fmtDur(avg("social", dates7))}/day. Cutting 30 min/day to a 3-pointer earns about +9 pts/day.`);
   if (avg("exercise", dates7) < 30)
-    suggestions.push(`Exercise is averaging ${fmtDur(avg("exercise", dates7))}/day. A 45-minute workout is 4.5 blocks and 2.3 pts at 3 pts/hr.`);
+    suggestions.push(`Exercise is averaging ${fmtDur(avg("exercise", dates7))}/day. A 45-minute workout is 4.5 blocks and 13.5 pts at 3 pts/block.`);
   if (avg("sleep", dates7) < 420)
-    suggestions.push(`Sleep is averaging ${fmtDur(avg("sleep", dates7))}/night — under 7h. Sleep is a 3-pointer, so an extra hour is worth 3 pts.`);
+    suggestions.push(`Sleep is averaging ${fmtDur(avg("sleep", dates7))}/night — under 7h. Sleep is a 3-pointer, so an extra hour is worth 18 pts.`);
   if (avg("focus", dates7) < 60)
-    suggestions.push(`Deep focus is averaging ${fmtDur(avg("focus", dates7))}/day. Protect a 2-hour morning block — at 2 pts/hr that's 4 pts.`);
+    suggestions.push(`Deep focus is averaging ${fmtDur(avg("focus", dates7))}/day. Protect a 2-hour morning block — at 2 pts/block that's 24 pts.`);
   if (suggestions.length === 0)
     suggestions.push("Your week looks balanced — every category is at or above target. Try raising a goal to keep beating yesterday.");
 
@@ -211,11 +212,11 @@ export function InsightsTab({
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3 text-center">
         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-          <div className="text-2xl font-extrabold text-slate-900">{avgPts.toFixed(1)}</div>
+          <div className="text-2xl font-extrabold text-slate-900">{fmtPts(avgPts)}</div>
           <div className="text-xs text-slate-500">avg pts / day (7d)</div>
         </div>
         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-          <div className="text-2xl font-extrabold text-slate-900">{best.toFixed(1)}</div>
+          <div className="text-2xl font-extrabold text-slate-900">{fmtPts(best)}</div>
           <div className="text-xs text-slate-500">best day (7d)</div>
         </div>
         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
@@ -296,7 +297,7 @@ export function InsightsTab({
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <select value={goalCat} onChange={(e) => setGoalCat(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
-            {state.categories.filter((c) => c.pointsPerHour > 0).map((c) => (
+            {state.categories.filter((c) => c.pointsPerBlock > 0).map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>

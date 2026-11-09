@@ -16,13 +16,13 @@ create table if not exists profiles (
   created_at timestamptz not null default now()
 );
 
--- Points per hour per category, per user. Tier enforces the budget.
+-- Points per 10-minute block per category, per user. Tier enforces the budget.
 create table if not exists categories (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references profiles (id) on delete cascade,
   name text not null,
   color text not null,
-  points_per_hour numeric(4,2) not null,
+  points_per_block numeric(4,2) not null,
   tier text not null check (tier in ('3','2','1','0','negative')),
   created_at timestamptz not null default now(),
   unique (user_id, name)

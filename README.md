@@ -3,16 +3,16 @@
 **Beat yesterday.** Your day is 144 blocks of 10 minutes. Score them, beat
 yesterday, and do it again tomorrow.
 
-A day = 1,440 minutes = 144 blocks. You assign points per hour to what each
-block is worth — Sleep, Family, Learning and Exercise are usually 3 pointers,
-Deep Focus 2, Work / Chores / Commute 1, Social Media −0.5. Your day scores
-itself from your recurring schedule and calendar, you confirm it in the
-evening, and tomorrow you try to beat it.
+A day = 1,440 minutes = 144 blocks. You assign points per 10-minute block —
+Sleep, Family, Learning and Exercise are usually 3 pointers, Deep Focus 2,
+Work / Chores / Commute 1, Social Media −0.5. Your day scores itself from
+your recurring schedule and calendar, you confirm it in the evening, and
+tomorrow you try to beat it.
 
 ## Screens
 
 - **Onboarding (5 steps)** — points budget (limited 3- and 2-pointer slots),
-  points-per-hour editor, sleep/wake/commute/workout questions that draft a
+  points-per-block editor, sleep/wake/commute/workout questions that draft a
   recurring schedule, and a Google Calendar toggle.
 - **Today** — day score vs yesterday, 144-block waffle (Minutes | Points
   toggle; Points mode re-sorts by value, negative categories are dashed debt
@@ -34,9 +34,11 @@ evening, and tomorrow you try to beat it.
 
 ## Points math
 
-`points = points_per_hour × minutes / 60`
+`points = points_per_block × minutes / 10`
 
-Example: 8 hours of sleep at 3 pts/hr = 24 points.
+Example: 8 hours of sleep at 3 pts/block = 144 points. A 45-minute workout at
+3 pts/block = 13.5 points (4.5 blocks). A weekday on the default schedule
+scores 274.5 points; a weekend day scores 295.5 points.
 
 ## Run locally
 

@@ -11,6 +11,7 @@ import {
   dayStatus,
   fmtDur,
   fmtMin,
+  fmtPts,
   prettyDate,
 } from "../lib/core";
 import { RhythmClock, Treemap, Waffle } from "./visuals";
@@ -55,7 +56,7 @@ export default function TodayTab({
   const shownPts =
     (Object.entries(shown).reduce((s, [id, m]) => {
       const c = state.categories.find((x) => x.id === id);
-      return s + ((c?.pointsPerHour ?? 0) * m) / 60;
+      return s + ((c?.pointsPerBlock ?? 0) * m) / 10;
     }, 0));
 
   return (
@@ -83,14 +84,14 @@ export default function TodayTab({
 
       <div className="grid grid-cols-3 gap-3 text-center">
         <div className="rounded-2xl bg-indigo-600 p-4 text-white shadow-sm">
-          <div className="text-3xl font-extrabold">{pts.toFixed(1)}</div>
+          <div className="text-3xl font-extrabold">{fmtPts(pts)}</div>
           <div className="text-xs opacity-80">points today</div>
         </div>
         <div className={`rounded-2xl p-4 shadow-sm ring-1 ring-slate-200 ${diff >= 0 ? "bg-emerald-50" : "bg-rose-50"}`}>
           <div className={`text-3xl font-extrabold ${diff >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
-            {diff >= 0 ? "+" : ""}{diff.toFixed(1)}
+            {diff >= 0 ? "+" : ""}{fmtPts(diff)}
           </div>
-          <div className="text-xs text-slate-600">vs yesterday ({yday.toFixed(1)})</div>
+          <div className="text-xs text-slate-600">vs yesterday ({fmtPts(yday)})</div>
         </div>
         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
           <div className="text-3xl font-extrabold text-slate-900">{blocksOf(totalMin).toFixed(1)}</div>
@@ -100,11 +101,11 @@ export default function TodayTab({
 
       {diff >= 0 && pts > 0 ? (
         <p className="rounded-xl bg-emerald-50 px-3 py-2 text-center text-sm font-medium text-emerald-800">
-          🎉 You&apos;re beating yesterday by {diff.toFixed(1)} points — keep it up!
+          🎉 You&apos;re beating yesterday by {fmtPts(diff)} points — keep it up!
         </p>
       ) : (
         <p className="rounded-xl bg-slate-100 px-3 py-2 text-center text-sm text-slate-600">
-          {Math.abs(diff).toFixed(1)} points behind yesterday. There&apos;s still time in the day — a 45-min workout is worth 2.3 pts.
+          {fmtPts(Math.abs(diff))} points behind yesterday. There&apos;s still time in the day — a 45-min workout is worth 13.5 pts.
         </p>
       )}
 
@@ -162,12 +163,12 @@ export default function TodayTab({
                   </span>
                   <button onClick={() => bump(c.id, 10)} className="rounded-full bg-slate-100 px-2.5 py-1 font-bold text-slate-600">+10</button>
                   <span className="ml-auto font-semibold text-slate-900">
-                    {(((c.pointsPerHour * (shown[c.id] || 0)) / 60)).toFixed(1)} pts
+                    {fmtPts(((c.pointsPerBlock * (shown[c.id] || 0)) / 10))} pts
                   </span>
                 </div>
               ))}
             <p className="pt-1 text-sm text-slate-600">
-              Adjusted total: <b>{shownPts.toFixed(1)} pts</b> (was {pts.toFixed(1)})
+              Adjusted total: <b>{fmtPts(shownPts)} pts</b> (was {fmtPts(pts)})
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
               <button onClick={() => confirmDay(false)} className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white">

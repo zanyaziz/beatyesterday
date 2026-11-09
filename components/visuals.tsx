@@ -6,6 +6,7 @@ import {
   Category,
   fmtDur,
   fmtMin,
+  fmtPts,
   scoreMinutes,
 } from "../lib/core";
 
@@ -34,8 +35,8 @@ export function Waffle({
       .filter(([, m]) => m > 0)
       .sort((a, b) => {
         if (mode === "points") {
-          const pa = (map[a[0]]?.pointsPerHour ?? 0) * a[1];
-          const pb = (map[b[0]]?.pointsPerHour ?? 0) * b[1];
+          const pa = (map[a[0]]?.pointsPerBlock ?? 0) * a[1];
+          const pb = (map[b[0]]?.pointsPerBlock ?? 0) * b[1];
           return pb - pa;
         }
         return b[1] - a[1];
@@ -60,7 +61,7 @@ export function Waffle({
         <div>
           <h3 className="font-semibold text-slate-900">Your day in 144 blocks</h3>
           <p className="text-xs text-slate-500">
-            {totalBlocks.toFixed(1)} of 144 blocks · 1 block = 10 min · {pts.toFixed(1)} pts
+            {totalBlocks.toFixed(1)} of 144 blocks · 1 block = 10 min · {fmtPts(pts)} pts
           </p>
         </div>
         <div className="flex rounded-full bg-slate-100 p-0.5 text-xs font-medium">
@@ -83,11 +84,11 @@ export function Waffle({
           const c = map[cell.cat];
           if (!c) return null;
           const dim = isolated && isolated !== cell.cat;
-          const negative = c.pointsPerHour < 0;
+          const negative = c.pointsPerBlock < 0;
           return (
             <div
               key={i}
-              title={`${c.name} · ${mode === "points" ? `${((c.pointsPerHour * 10) / 60).toFixed(2)} pts/block` : "10 min"}`}
+              title={`${c.name} · ${mode === "points" ? `${c.pointsPerBlock} pts/block` : "10 min"}`}
               className={`aspect-square rounded-[3px] ${dim ? "opacity-15" : ""} ${
                 cell.frac ? "w-1/2" : "w-full"
               } ${negative ? "border-2 border-dashed" : ""}`}
@@ -103,7 +104,7 @@ export function Waffle({
           .sort((a, b) => (minutes[b.id] || 0) - (minutes[a.id] || 0))
           .map((c) => {
             const m = minutes[c.id] || 0;
-            const p = (c.pointsPerHour * m) / 60;
+            const p = (c.pointsPerBlock * m) / 10;
             const active = isolated === c.id;
             return (
               <button
@@ -119,7 +120,7 @@ export function Waffle({
                   {fmtDur(m)} · {blocksOf(m).toFixed(1)} blk
                 </span>
                 <span className={`w-16 text-right font-semibold ${p < 0 ? "text-rose-600" : "text-slate-900"}`}>
-                  {p.toFixed(1)} pts
+                  {fmtPts(p)} pts
                 </span>
               </button>
             );
@@ -244,16 +245,16 @@ export function Treemap({
   isolated: string | null;
 }) {
   const map = Object.fromEntries(categories.map((c) => [c.id, c]));
-  const pts = (id: string) => ((map[id]?.pointsPerHour ?? 0) * (minutes[id] || 0)) / 60;
+  const pts = (id: string) => ((map[id]?.pointsPerBlock ?? 0) * (minutes[id] || 0)) / 10;
   const totalPts = categories.reduce((s, c) => s + Math.max(0, pts(c.id)), 0);
   const rows = categories
     .filter((c) => (minutes[c.id] || 0) > 0)
     .sort((a, b) => pts(b.id) - pts(a.id));
 
   // Lowest-return callout: most minutes at the lowest positive points/hr
-  const positive = rows.filter((c) => c.pointsPerHour > 0);
+  const positive = rows.filter((c) => c.pointsPerBlock > 0);
   const lowest = positive.length
-    ? positive.reduce((a, b) => (a.pointsPerHour <= b.pointsPerHour ? a : b))
+    ? positive.reduce((a, b) => (a.pointsPerBlock <= b.pointsPerBlock ? a : b))
     : null;
 
   return (
@@ -269,7 +270,7 @@ export function Treemap({
               key={c.id}
               className={`flex items-center justify-center overflow-hidden text-center text-[10px] font-bold text-white ${dim ? "opacity-20" : ""}`}
               style={{ width: `${Math.max(share, 0)}%`, backgroundColor: c.color, minWidth: share > 0 ? 8 : 0 }}
-              title={`${c.name}: ${pts(c.id).toFixed(1)} pts`}
+              title={`${c.name}: ${fmtPts(pts(c.id))} pts`}
             >
               {share >= 12 ? c.name : ""}
             </div>
@@ -287,7 +288,7 @@ export function Treemap({
               <div className="flex justify-between text-sm">
                 <span className="font-medium text-slate-800">{c.name}</span>
                 <span className="text-slate-500">
-                  {fmtDur(actual)} / {fmtDur(target)} target · {pts(c.id).toFixed(1)} pts
+                  {fmtDur(actual)} / {fmtDur(target)} target · {fmtPts(pts(c.id))} pts
                 </span>
               </div>
               <div className="mt-0.5 h-2 overflow-hidden rounded-full bg-slate-100">
@@ -299,8 +300,8 @@ export function Treemap({
       </div>
       {lowest && (
         <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          💡 Lowest return: <b>{lowest.name}</b> earns {lowest.pointsPerHour} pt/hr. Shifting 30 min
-          from {lowest.name} to a 3-pointer would earn +1.0 pt/day.
+          💡 Lowest return: <b>{lowest.name}</b> earns {lowest.pointsPerBlock} pts per 10-min block.
+          Shifting 30 min from {lowest.name} to a 3-pointer would earn +{(3 - lowest.pointsPerBlock) * 3} pts/day.
         </p>
       )}
     </div>

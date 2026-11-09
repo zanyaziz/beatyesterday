@@ -11,6 +11,7 @@ import {
   demoMinutes,
   demoPoints,
   fmtDur,
+  fmtPts,
   lastNDates,
   prettyDate,
   ScheduleAnswers,
@@ -113,7 +114,7 @@ export function SpacesTab({
                   {hidden ? (
                     <span className="text-sm font-medium text-slate-400">— hidden —</span>
                   ) : (
-                    <span className="text-lg font-extrabold text-slate-900">{r.pts.toFixed(1)} pts</span>
+                    <span className="text-lg font-extrabold text-slate-900">{fmtPts(r.pts)} pts</span>
                   )}
                   {!hidden && <span className="text-slate-400">{isOpen ? "▾" : "▸"}</span>}
                 </button>
@@ -128,7 +129,7 @@ export function SpacesTab({
                           <span className="flex-1 text-slate-700">{c.name}</span>
                           <span className="text-slate-500">{fmtDur(mins[c.id])}</span>
                           <span className="w-14 text-right font-semibold text-slate-800">
-                            {(((c.pointsPerHour * mins[c.id]) / 60)).toFixed(1)} pts
+                            {fmtPts(((c.pointsPerBlock * mins[c.id]) / 10))} pts
                           </span>
                         </div>
                       ))}
@@ -164,7 +165,7 @@ export function SetupTab({
   const [saved, setSaved] = useState("");
 
   const setPoints = (id: string, v: number) =>
-    setState({ ...state, categories: state.categories.map((c) => (c.id === id ? { ...c, pointsPerHour: v } : c)) });
+    setState({ ...state, categories: state.categories.map((c) => (c.id === id ? { ...c, pointsPerBlock: v } : c)) });
 
   const regenerate = () => {
     setState({ ...state, recurring: buildRecurring(answers) });
@@ -207,19 +208,19 @@ export function SetupTab({
       </div>
 
       <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        <h3 className="mb-3 font-semibold text-slate-900">Points per hour</h3>
+        <h3 className="mb-3 font-semibold text-slate-900">Points per 10-minute block</h3>
         <div className="space-y-2">
           {state.categories.map((c) => (
             <div key={c.id} className="flex items-center gap-3">
               <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: c.color }} />
               <span className="w-28 text-sm font-medium text-slate-800">{c.name}</span>
               <select
-                value={c.pointsPerHour}
+                value={c.pointsPerBlock}
                 onChange={(e) => setPoints(c.id, Number(e.target.value))}
                 className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
               >
                 {[3, 2, 1, 0, -0.5, -1].map((v) => (
-                  <option key={v} value={v}>{v} pts/hr</option>
+                  <option key={v} value={v}>{v} pts/block</option>
                 ))}
               </select>
             </div>
