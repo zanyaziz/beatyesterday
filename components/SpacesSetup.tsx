@@ -18,6 +18,8 @@ import {
   Sharing,
 } from "../lib/core";
 import { LineChart } from "./visuals";
+import CalendarImport, { type ImportSummary } from "./CalendarImport";
+import { importEventsIntoState, type CalendarEvent } from "../lib/calendar";
 
 // ---------------- Spaces ----------------
 export function SpacesTab({
@@ -267,17 +269,19 @@ export function SetupTab({
 
       <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
         <h3 className="mb-3 font-semibold text-slate-900">Calendar</h3>
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={state.calendarSimulated}
-            onChange={(e) => setState({ ...state, calendarSimulated: e.target.checked })}
-            className="mt-1 h-4 w-4"
-          />
-          <span className="text-sm text-slate-700">
-            Google Calendar sync (SIMULATED — prototype only, no real OAuth in v1)
-          </span>
-        </label>
+        <CalendarImport
+          onApply={(events: CalendarEvent[]): ImportSummary => {
+            const r = importEventsIntoState(state, events);
+            setState(r.state);
+            return {
+              importedCount: r.importedCount,
+              daysAffected: r.daysAffected,
+              unmatchedTitles: r.unmatchedTitles,
+            };
+          }}
+          simulated={state.calendarSimulated}
+          onSimulatedChange={(v) => setState({ ...state, calendarSimulated: v })}
+        />
       </div>
 
       <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">

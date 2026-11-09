@@ -11,9 +11,14 @@ tomorrow you try to beat it.
 
 ## Screens
 
+- **Landing** — everyone lands here first: hero, a real sample day scored
+  by the points engine (144-block waffle + score card), a "How it works"
+  section, and a points explainer, with a CTA into onboarding.
 - **Onboarding (5 steps)** — points budget (limited 3- and 2-pointer slots),
   points-per-block editor, sleep/wake/commute/workout questions that draft a
-  recurring schedule, and a Google Calendar toggle.
+  recurring schedule, and Google Calendar connect / .ics import. The
+  in-progress draft is saved to localStorage, so the Google sign-in redirect
+  doesn't lose your answers.
 - **Today** — day score vs yesterday, 144-block waffle (Minutes | Points
   toggle; Points mode re-sorts by value, negative categories are dashed debt
   blocks), 24-hour rhythm clock, Time Portfolio treemap with Target vs
@@ -52,42 +57,73 @@ npm run dev
 npm run build   # production build check
 ```
 
+## Environment variables
+
+None are required — without them the app runs entirely on localStorage
+(per browser) with a clearly-labeled simulated calendar toggle.
+
+| Variable | Required for |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Auth + cloud sync |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Auth + cloud sync |
+
+Set them in Vercel (Project → Settings → Environment Variables) and
+redeploy. See `SUPABASE_SETUP.md` for the full dashboard checklist.
+
+## Supabase sync + Google Calendar
+
+- **Sync (`lib/supabase.ts`)** — when the env vars are set, signing in
+  (Google) loads your state from Supabase if it exists, otherwise migrates
+  your local state up once. Every change then syncs back (debounced 1s):
+  categories, point budget, recurring schedule, day blocks, goals. If any
+  call fails, the header shows the error and localStorage keeps working.
+  The schema (`supabase/schema.sql`) has row-level security — users can only
+  read/write their own rows — plus a trigger that creates a profile row on
+  signup.
+- **Google Calendar (`lib/calendar.ts`)** — Sign in with Google requests the
+  `calendar.readonly` scope. "Import last 7 days" fetches your primary
+  calendar, maps each event to a category by title keywords (gym → Exercise,
+  focus → Deep Focus, …), and buckets the minutes into 10-minute blocks on
+  the right day, taking minutes from Free Time first. Imported days are
+  marked "adjusted". Events that match no keyword go to Free Time and are
+  listed in the import summary. All-day events are skipped (they carry no
+  minutes).
+- **Phone calendar (.ics)** — works with no account at all: export an .ics
+  from Apple Calendar or Google Calendar and upload it in Onboarding step 3
+  or Setup → Calendar. Same keyword mapping and block bucketing.
+
 ## Deploy
 
-No environment variables are required for v1. Deploy on Vercel:
+Deploy on Vercel:
 
 - Import the repo at https://vercel.com/new (framework preset: Next.js), or
 - `vercel` from the repo root with the Vercel CLI.
 
 Every push to `main` redeploys automatically when the repo is linked.
 
-## What's real vs simulated in v1
+## What's real vs simulated
 
-- **Real:** onboarding, points engine, 144-block visualizations, trends,
-  insights, badges, goals, Spaces leaderboard + privacy, localStorage
-  persistence (per browser).
+- **Real:** landing + onboarding, points engine, 144-block visualizations,
+  trends, insights, badges, goals, Spaces leaderboard + privacy, localStorage
+  persistence (per browser), .ics import, Supabase sync + Google Calendar
+  import (once the env vars and dashboard setup from `SUPABASE_SETUP.md`
+  are done).
 - **Simulated / prototype:** Google Calendar sync is a clearly-labeled
-  toggle — no real OAuth, no Google account is connected. Space members
-  (Riley, Jordan, Taylor, Casey) are clearly-labeled demo data so the leaderboard
-  and privacy controls can be tried end to end.
-- **Not in v1:** accounts, cross-device sync, real calendar, domain
-  (beatyesterday.ai is not registered yet).
+  toggle when Supabase is not configured — no real OAuth, no Google account
+  is connected. Space members (Riley, Jordan, Taylor, Casey) are
+  clearly-labeled demo data so the leaderboard and privacy controls can be
+  tried end to end.
+- **Not yet:** domain (beatyesterday.ai is not registered yet), real
+  multi-user Spaces (members are still demo data; the schema + RLS for real
+  spaces is ready).
 
 ## Next steps
 
-1. **Supabase** — the full production schema is in `supabase/schema.sql`
-   (profiles, categories, point_budgets, recurring_blocks, day_blocks,
-   day_summaries, calendar_connections, calendar_events, goals, spaces,
-   space_members, space_day_totals, badges, user_badges). It mirrors the
-   v1 localStorage model 1:1, so the data layer can be swapped without
-   changing the screens. Add Supabase Auth + row-level security so Spaces
-   privacy is enforced server-side, not just in the UI.
-2. **Google OAuth** — Sign in with Google, `calendar.readonly` scope, map
-   events to categories by title keywords with a manual fallback, and write
-   them into `day_blocks` (source = `calendar`).
-3. **Domain** — register `beatyesterday.ai` and attach it in Vercel.
-4. **Phone calendar** — `.ics` import or a native app; deferred after
-   Google Calendar.
+1. **Dashboard setup** — follow `SUPABASE_SETUP.md` (Supabase project,
+   run the schema, enable Google Auth, add the env vars in Vercel).
+2. **Domain** — register `beatyesterday.ai` and attach it in Vercel.
+3. **Real Spaces** — invites + sharing real member totals via
+   `space_day_totals` (schema + RLS already in place).
 
 ## Tech
 

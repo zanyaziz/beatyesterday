@@ -1,9 +1,9 @@
 -- Beat Yesterday — production schema (Supabase / Postgres).
--- NOT wired yet in v1 (localStorage). This mirrors the v1 data model 1:1 so
--- the data layer can be swapped without changing the screens.
--- Next steps: create a Supabase project, run this file as a migration,
--- enable RLS (policies sketched below), add Supabase Auth + Google OAuth
--- (Sign in with Google, calendar.readonly scope).
+-- Wired in the app via lib/supabase.ts (activates when
+-- NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY are set).
+-- Run this file in the Supabase SQL editor; it is re-runnable.
+-- Includes row-level security (users can only read/write their own rows)
+-- and a trigger that creates a profile row on signup.
 
 create extension if not exists "pgcrypto";
 
@@ -152,9 +152,103 @@ create table if not exists user_badges (
 
 -- Row-level security: users can only read/write their own rows. Space
 -- visibility is enforced by joining space_members + sharing_level.
--- (Enable RLS and add policies per table when the Supabase project exists;
---  policies are intentionally not created here so this file can be run
---  before auth is configured.)
--- alter table profiles enable row level security;
--- create policy "own profile" on profiles for all using (auth.uid() = id);
--- ... repeat per user-scoped table with auth.uid() = user_id ...
+-- Run this file in the Supabase SQL editor (it is re-runnable: policies
+-- are dropped before they are re-created).
+
+alter table profiles enable row level security;
+alter table categories enable row level security;
+alter table point_budgets enable row level security;
+alter table recurring_blocks enable row level security;
+alter table day_blocks enable row level security;
+alter table day_summaries enable row level security;
+alter table calendar_connections enable row level security;
+alter table calendar_events enable row level security;
+alter table goals enable row level security;
+alter table spaces enable row level security;
+alter table space_members enable row level security;
+alter table space_day_totals enable row level security;
+alter table badges enable row level security;
+alter table user_badges enable row level security;
+
+-- Helper: is the caller a member of this space?
+create or replace function public.is_space_member(p_space_id uuid)
+returns boolean language sql stable as $$
+  select exists (
+    select 1 from public.space_members
+    where space_id = p_space_id and user_id = auth.uid()
+  );
+$$;
+
+-- profiles: one row per user, own row only.
+drop policy if exists "own profile" on profiles;
+create policy "own profile" on profiles for all using (auth.uid() = id);
+
+-- Own-rows tables (user_id = caller).
+drop policy if exists "own rows" on categories;
+create policy "own rows" on categories for all using (auth.uid() = user_id);
+drop policy if exists "own rows" on point_budgets;
+create policy "own rows" on point_budgets for all using (auth.uid() = user_id);
+drop policy if exists "own rows" on recurring_blocks;
+create policy "own rows" on recurring_blocks for all using (auth.uid() = user_id);
+drop policy if exists "own rows" on day_blocks;
+create policy "own rows" on day_blocks for all using (auth.uid() = user_id);
+drop policy if exists "own rows" on day_summaries;
+create policy "own rows" on day_summaries for all using (auth.uid() = user_id);
+drop policy if exists "own rows" on calendar_connections;
+create policy "own rows" on calendar_connections for all using (auth.uid() = user_id);
+drop policy if exists "own rows" on calendar_events;
+create policy "own rows" on calendar_events for all using (auth.uid() = user_id);
+drop policy if exists "own rows" on goals;
+create policy "own rows" on goals for all using (auth.uid() = user_id);
+drop policy if exists "own rows" on user_badges;
+create policy "own rows" on user_badges for all using (auth.uid() = user_id);
+
+-- spaces: members can read; only the creator can create/update/delete.
+drop policy if exists "members can read spaces" on spaces;
+create policy "members can read spaces" on spaces for select
+  using (auth.uid() = created_by or public.is_space_member(id));
+drop policy if exists "creator manages spaces" on spaces;
+create policy "creator manages spaces" on spaces for all
+  using (auth.uid() = created_by) with check (auth.uid() = created_by);
+
+-- space_members: members can read the roster; a user can only add/remove
+-- themselves (invites are out of scope for v1).
+drop policy if exists "members can read roster" on space_members;
+create policy "members can read roster" on space_members for select
+  using (public.is_space_member(space_id));
+drop policy if exists "own membership" on space_members;
+create policy "own membership" on space_members for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- space_day_totals: visible only to members of that space; a user writes
+-- only their own totals.
+drop policy if exists "members read totals" on space_day_totals;
+create policy "members read totals" on space_day_totals for select
+  using (public.is_space_member(space_id));
+drop policy if exists "own totals" on space_day_totals;
+create policy "own totals" on space_day_totals for all
+  using (auth.uid() = user_id and public.is_space_member(space_id))
+  with check (auth.uid() = user_id and public.is_space_member(space_id));
+
+-- badges: reference data, readable by everyone signed in.
+drop policy if exists "badges readable" on badges;
+create policy "badges readable" on badges for select using (true);
+
+-- Auto-create a profile row when a user signs up (Supabase Auth).
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into public.profiles (id, display_name)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1), 'You')
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();

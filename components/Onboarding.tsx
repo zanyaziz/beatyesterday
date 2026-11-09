@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AppState,
   buildRecurring,
@@ -11,6 +11,10 @@ import {
   scoreMinutes,
   seedHistory,
 } from "../lib/core";
+import CalendarImport, { type ImportSummary } from "./CalendarImport";
+import { importEventsIntoState, type CalendarEvent } from "../lib/calendar";
+
+const DRAFT_KEY = "beatyesterday-onboarding-draft";
 
 const CATEGORIES_EDITABLE = [
   "sleep",
@@ -42,6 +46,41 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
   });
   const [answers, setAnswers] = useState<ScheduleAnswers>(DEFAULT_ANSWERS);
   const [calendarSim, setCalendarSim] = useState(false);
+  const [pendingEvents, setPendingEvents] = useState<CalendarEvent[]>([]);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  // Persist the in-progress onboarding draft: signing in with Google
+  // redirects away from the page, and without this the answers would
+  // be lost. Restored on mount; cleared when onboarding finishes.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (typeof d.name === "string") setName(d.name);
+        if (typeof d.three === "number") setThree(d.three);
+        if (typeof d.two === "number") setTwo(d.two);
+        if (d.points) setPoints(d.points);
+        if (d.answers) setAnswers(d.answers);
+        if (typeof d.calendarSim === "boolean") setCalendarSim(d.calendarSim);
+        if (Array.isArray(d.pendingEvents)) setPendingEvents(d.pendingEvents);
+      }
+    } catch {
+      // corrupted draft -> start fresh
+    }
+    setDraftLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (!draftLoaded) return;
+    try {
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ name, three, two, points, answers, calendarSim, pendingEvents })
+      );
+    } catch {
+      // storage full/blocked -> onboarding still works, just not resumable
+    }
+  }, [draftLoaded, name, three, two, points, answers, calendarSim, pendingEvents]);
 
   const setA = (patch: Partial<ScheduleAnswers>) => setAnswers((a) => ({ ...a, ...patch }));
   const toggleDay = (d: number) =>
@@ -72,7 +111,8 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
     };
   }, [answers, points]);
 
-  const finish = () => {
+  // State built from the current answers/points (not yet onboarded).
+  const draftState = (): AppState => {
     const recurring = buildRecurring(answers);
     const cats = [
       { id: "sleep", name: "Sleep", color: "#6366f1", pointsPerBlock: points.sleep },
@@ -86,8 +126,8 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
       { id: "free", name: "Free Time", color: "#9ca3af", pointsPerBlock: 1 },
       { id: "social", name: "Social Media", color: "#ec4899", pointsPerBlock: points.social },
     ];
-    const state: AppState = {
-      onboarded: true,
+    return {
+      onboarded: false,
       name: name.trim() || "You",
       budget: { three, two },
       categories: cats,
@@ -98,7 +138,34 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
       goals: [],
       createdAt: new Date().toISOString(),
     };
+  };
+
+  // Calendar import during onboarding: preview against a draft state so
+  // the summary is real; the same events are applied for real in finish().
+  const handleImport = (events: CalendarEvent[]): ImportSummary => {
+    setPendingEvents(events);
+    const r = importEventsIntoState(draftState(), events);
+    return {
+      importedCount: r.importedCount,
+      daysAffected: r.daysAffected,
+      unmatchedTitles: r.unmatchedTitles,
+    };
+  };
+
+  const finish = () => {
+    const state = draftState();
+    state.onboarded = true;
     state.days = seedHistory(state);
+    if (pendingEvents.length > 0) {
+      const r = importEventsIntoState(state, pendingEvents);
+      // importEventsIntoState returns a copy — keep its days.
+      state.days = r.state.days;
+    }
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // ignore
+    }
     onDone(state);
   };
 
@@ -270,25 +337,22 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
 
         {step === 3 && (
           <div className="space-y-4">
-            <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
-              <b>SIMULATED / prototype:</b> real Google Calendar OAuth sync is not in v1. Turning
-              this on marks calendar events as “synced” from your recurring schedule in the demo —
-              no real Google account is connected.
-            </div>
-            <label className="flex items-start gap-3 rounded-xl border border-slate-200 p-3">
-              <input type="checkbox" checked={calendarSim} onChange={(e) => setCalendarSim(e.target.checked)} className="mt-1 h-4 w-4" />
-              <span>
-                <span className="block font-medium text-slate-800">Connect Google Calendar (simulated)</span>
-                <span className="text-sm text-slate-500">
-                  Calendar events would map to categories by title keywords, and fill your day
-                  automatically. In v1 this is a placeholder toggle.
-                </span>
-              </span>
-            </label>
-            <p className="text-sm text-slate-500">
-              Phone calendar import (via .ics) and real Google OAuth are planned next steps —
-              see the README.
+            <p className="text-sm text-slate-600">
+              Your calendar fills in the gaps your recurring schedule misses — a
+              gym session here, a family dinner there. Connect Google Calendar,
+              or upload an .ics file from your phone.
             </p>
+            <CalendarImport
+              onApply={handleImport}
+              simulated={calendarSim}
+              onSimulatedChange={setCalendarSim}
+            />
+            {pendingEvents.length > 0 && (
+              <p className="text-xs text-slate-500">
+                {pendingEvents.length} imported event{pendingEvents.length === 1 ? "" : "s"} will
+                be applied to your first week when you finish onboarding.
+              </p>
+            )}
           </div>
         )}
 

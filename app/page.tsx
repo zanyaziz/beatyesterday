@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppState, defaultState } from "../lib/core";
+import Landing from "../components/Landing";
 import Onboarding from "../components/Onboarding";
 import TodayTab from "../components/TodayTab";
 import { InsightsTab, TrendsTab } from "../components/TrendsInsights";
 import { SetupTab, SpacesTab } from "../components/SpacesSetup";
+import {
+  getSession,
+  isSupabaseConfigured,
+  loadStateFromSupabase,
+  saveStateToSupabase,
+} from "../lib/supabase";
 
 const KEY = "beatyesterday-v1";
 const TABS = [
@@ -34,14 +41,54 @@ function load(): AppState {
 export default function Home() {
   const [state, setState] = useState<AppState | null>(null);
   const [tab, setTab] = useState<TabId>("today");
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [supaUserId, setSupaUserId] = useState<string | null>(null);
+  const [syncNote, setSyncNote] = useState<string>("");
+  const supaReady = useRef(false);
 
+  // Initial load: localStorage first, then Supabase wins if it has data.
   useEffect(() => {
-    setState(load());
+    const local = load();
+    setState(local);
+    if (!isSupabaseConfigured()) return;
+    getSession()
+      .then(async (session) => {
+        if (!session?.user) return;
+        setSupaUserId(session.user.id);
+        try {
+          const cloud = await loadStateFromSupabase(session.user.id);
+          if (cloud) {
+            setState(cloud);
+          } else {
+            // Fresh account — migrate the local state up once.
+            await saveStateToSupabase(local, session.user.id);
+          }
+        } catch (e) {
+          setSyncNote(e instanceof Error ? e.message : String(e));
+        } finally {
+          supaReady.current = true;
+        }
+      })
+      .catch(() => {
+        supaReady.current = true;
+      });
   }, []);
 
+  // Persist locally on every change.
   useEffect(() => {
     if (state) localStorage.setItem(KEY, JSON.stringify(state));
   }, [state]);
+
+  // Sync to Supabase when signed in (debounced 1s; never blocks the UI).
+  useEffect(() => {
+    if (!state || !supaUserId || !supaReady.current) return;
+    const t = setTimeout(() => {
+      saveStateToSupabase(state, supaUserId)
+        .then(() => setSyncNote("Synced ✓"))
+        .catch((e: unknown) => setSyncNote(e instanceof Error ? e.message : String(e)));
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [state, supaUserId]);
 
   if (state === null) {
     return (
@@ -54,7 +101,11 @@ export default function Home() {
   if (!state.onboarded) {
     return (
       <main className="min-h-screen bg-slate-50">
-        <Onboarding onDone={setState} />
+        {!showOnboarding ? (
+          <Landing onStart={() => setShowOnboarding(true)} />
+        ) : (
+          <Onboarding onDone={setState} />
+        )}
       </main>
     );
   }
@@ -69,8 +120,11 @@ export default function Home() {
             </h1>
             <p className="text-xs text-slate-500">Beat yesterday. · Hi, {state.name}</p>
           </div>
-          <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
-            v1 · local data
+          <span
+            className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700"
+            title={syncNote || undefined}
+          >
+            {supaUserId ? (syncNote === "Synced ✓" ? "☁️ Synced" : "☁️ Cloud") : "v1 · local data"}
           </span>
         </div>
       </header>
