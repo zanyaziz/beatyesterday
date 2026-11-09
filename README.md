@@ -66,7 +66,7 @@ Every push to `main` redeploys automatically when the repo is linked.
   persistence (per browser).
 - **Simulated / prototype:** Google Calendar sync is a clearly-labeled
   toggle — no real OAuth, no Google account is connected. Space members
-  (Maya, Dev, Priya, Sam) are clearly-labeled demo data so the leaderboard
+  (Riley, Jordan, Taylor, Casey) are clearly-labeled demo data so the leaderboard
   and privacy controls can be tried end to end.
 - **Not in v1:** accounts, cross-device sync, real calendar, domain
   (beatyesterday.ai is not registered yet).

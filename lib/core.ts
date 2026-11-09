@@ -359,10 +359,10 @@ export type DemoMember = {
 };
 
 export const DEMO_MEMBERS: DemoMember[] = [
-  { id: "maya", name: "Maya", sharing: "totals", color: "#f59e0b", base: 3.5, swing: 4 },
-  { id: "dev", name: "Dev", sharing: "detailed", color: "#10b981", base: -2, swing: 5 },
-  { id: "priya", name: "Priya", sharing: "private", color: "#8b5cf6", base: 1, swing: 3 },
-  { id: "sam", name: "Sam", sharing: "detailed", color: "#06b6d4", base: -5, swing: 6 },
+  { id: "riley", name: "Riley", sharing: "totals", color: "#f59e0b", base: 3.5, swing: 4 },
+  { id: "jordan", name: "Jordan", sharing: "detailed", color: "#10b981", base: -2, swing: 5 },
+  { id: "taylor", name: "Taylor", sharing: "private", color: "#8b5cf6", base: 1, swing: 3 },
+  { id: "casey", name: "Casey", sharing: "detailed", color: "#06b6d4", base: -5, swing: 6 },
 ];
 
 export function demoPoints(m: DemoMember, state: AppState, date: string): number {

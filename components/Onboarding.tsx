@@ -146,7 +146,7 @@ export default function Onboarding({ onDone }: { onDone: (s: AppState) => void }
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Zain"
+                placeholder="e.g. John Doe"
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900"
               />
             </label>
